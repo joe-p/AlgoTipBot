@@ -4,7 +4,6 @@ import algosdk from 'algosdk'
 import axios from 'axios'
 import * as crypto from 'crypto'
 import cors from 'cors'
-import { CompileResponse } from 'algosdk/dist/types/src/client/v2/algod/models/types'
 
 namespace AlgoTipBot {
   export interface Callbacks {
