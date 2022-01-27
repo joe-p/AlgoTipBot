@@ -8,7 +8,18 @@ import cors from 'cors'
 namespace AlgoTipBot {
   export interface Callbacks {
     register?: (url: string) => Promise<void>
-    verify?: () => Promise<void>,
+    verify?: (user: string, userAddress: string) => Promise<void>,
+  }
+
+  export interface VerificationServerOptions {
+    database: string
+    algodClient: algosdk.Algodv2
+    quicksigURL: string
+    account: algosdk.Account
+    callbacks?: Callbacks
+    service: string
+    description: string
+    url: string
   }
 
   export class VerificationServer {
@@ -17,27 +28,33 @@ namespace AlgoTipBot {
     callbacks: Callbacks
     algodClient: algosdk.Algodv2
     quicksigURL: string
+    account: algosdk.Account
+    service: string
+    description: string
+    url: string
 
-    constructor (database: string, algodClient:algosdk.Algodv2, callbacks?: Callbacks) {
+    constructor (options: VerificationServerOptions) {
       this.expressApp = express()
       this.expressApp.use(express.urlencoded({ extended: true }))
       this.expressApp.use(express.json())
       this.expressApp.use(cors())
 
-      this.keyv = new Keyv(database)
+      this.keyv = new Keyv(options.database)
       this.keyv.on('error', err => console.log('Connection Error', err))
-      this.callbacks = callbacks || {} as Callbacks
-      this.algodClient = algodClient
-      this.quicksigURL = 'http://localhost:3000'
+
+      this.callbacks = options.callbacks || {} as Callbacks
+      this.algodClient = options.algodClient
+      this.quicksigURL = options.quicksigURL
+      this.account = options.account
+      this.service = options.service
+      this.description = options.description
+      this.url = options.url
 
       this.setRoutes()
     }
 
     async register (id: string | number, userAddress: string) {
-      // generate quicksigk data and hash
-      const account = algosdk.generateAccount()
-
-      const suggestedParams = await algodClient.getTransactionParams().do()
+      const suggestedParams = await this.algodClient.getTransactionParams().do()
 
       const payObj = {
         suggestedParams: { ...suggestedParams, lastRound: 1, firstRound: 2 },
@@ -53,21 +70,21 @@ namespace AlgoTipBot {
         auth: {
           isAuth: true,
           user: id,
-          service: 'https://discord.gg/algorand',
-          description: 'Proof of wallet ownership is needed for tipping functionality on the official Algorand discord server.',
+          service: this.service,
+          description: this.service
         },
 
         post: {
-          onSigned: 'http://localhost:3001/verify'
+          onSigned: `${this.url}/verify`
         },
 
         b64Txn: b64Txn,
-        sigAddress: account.addr,
+        sigAddress: this.account.addr,
         userAddress: userAddress
       }
 
       const hash = crypto.createHash('sha256').update(JSON.stringify(metadata)).digest('hex')
-      const sig = algosdk.signBytes(Buffer.from(hash, 'hex'), account.sk)
+      const sig = algosdk.signBytes(Buffer.from(hash, 'hex'), this.account.sk)
 
       const data = {
         metadata: metadata,
@@ -109,11 +126,14 @@ namespace AlgoTipBot {
           return
         }
 
+        const user = data.metadata.auth.user
+        const userAddress = data.metadata.userAddress
+
         if (this.callbacks.verify) {
-          this.callbacks.verify()
+          this.callbacks.verify(user, userAddress)
         }
 
-        res.json({ msg: `Verified ${data.metadata.userAddress} belongs to ${data.metadata.auth.user}` })
+        res.json({ msg: `Verified ${userAddress} belongs to ${user}` })
       })
     }
 
@@ -123,15 +143,27 @@ namespace AlgoTipBot {
   }
 }
 
-const algodServer = 'http://localhost'
+const algodServer = 'http://192.168.1.212'
 const algodToken = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 
-const algodClient = new algosdk.Algodv2(algodToken, algodServer, 4001)
+const options = {
+  algodClient: new algosdk.Algodv2(algodToken, algodServer, 4001),
+  database: 'sqlite://db.sqlite',
+  quicksigURL: 'http://192.168.1.212:3000',
+  account: algosdk.generateAccount(),
+  service: 'Algorand Discord | https://discord.gg/algorand',
+  description: 'Proof of wallet ownership is needed for tipping functionality on the official Algorand discord server.',
+  url: 'http://192.168.1.212:3001',
+  callbacks: {
+    register: async (hash: string) => console.log(hash),
+    verify: async (user, userAddress) => console.log(`Verified ${userAddress} belongs to ${user}`)
+  }
+} as AlgoTipBot.VerificationServerOptions
 
-const server = new AlgoTipBot.VerificationServer('sqlite://db.sqlite', algodClient)
-server.callbacks.register = async (hash: string) => console.log(hash)
+const server = new AlgoTipBot.VerificationServer(options)
+const port = 3001
 
-server.start(3001, () => {
-  console.log('Listening on port 3001')
+server.start(port, () => {
+  console.log(`Listening on port ${port}`)
   server.register('MonopolyMan#1876', 'D34DXBU2LDSFAYXD2WTGD3FVT2CFCQBTLHMFESUDC237SHSVODQNATP264')
 })
