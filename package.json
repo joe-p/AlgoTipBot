@@ -1,7 +1,7 @@
 {
   "name": "algo_tipbot",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "license": "MIT",
   "scripts": {
     "start": "tsc && node dist/server.js"

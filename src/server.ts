@@ -5,7 +5,7 @@ import axios from 'axios'
 import * as crypto from 'crypto'
 import cors from 'cors'
 
-namespace AlgoTipBot {
+export namespace AlgoTipBot {
   export interface Callbacks {
     register?: (url: string) => Promise<void>
     verify?: (user: string, userAddress: string) => Promise<void>,
@@ -143,27 +143,4 @@ namespace AlgoTipBot {
   }
 }
 
-const algodServer = 'http://192.168.1.212'
-const algodToken = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-
-const options = {
-  algodClient: new algosdk.Algodv2(algodToken, algodServer, 4001),
-  database: 'sqlite://db.sqlite',
-  quicksigURL: 'http://192.168.1.212:3000',
-  account: algosdk.generateAccount(),
-  service: 'Algorand Discord | https://discord.gg/algorand',
-  description: 'Proof of wallet ownership is needed for tipping functionality on the official Algorand discord server.',
-  url: 'http://192.168.1.212:3001',
-  callbacks: {
-    register: async (hash: string) => console.log(hash),
-    verify: async (user, userAddress) => console.log(`Verified ${userAddress} belongs to ${user}`)
-  }
-} as AlgoTipBot.VerificationServerOptions
-
-const server = new AlgoTipBot.VerificationServer(options)
-const port = 3001
-
-server.start(port, () => {
-  console.log(`Listening on port ${port}`)
-  server.register('MonopolyMan#1876', 'D34DXBU2LDSFAYXD2WTGD3FVT2CFCQBTLHMFESUDC237SHSVODQNATP264')
-})
+export default AlgoTipBot
