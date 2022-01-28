@@ -4,34 +4,30 @@ import algosdk from 'algosdk'
 import axios from 'axios'
 import * as crypto from 'crypto'
 import cors from 'cors'
+import { EventEmitter } from 'events'
 
 export namespace AlgoTipBot {
-  export interface Callbacks {
-    register?: (url: string) => Promise<void>
-    verify?: (user: string, userAddress: string) => Promise<void>,
-  }
-
   export interface VerificationServerOptions {
     database: string
     algodClient: algosdk.Algodv2
     quicksigURL: string
     account: algosdk.Account
-    callbacks?: Callbacks
     service: string
     description: string
     url: string
+    // verifyCallback: (user: string, userAddress: string) => Promise<void>
   }
 
   export class VerificationServer {
     expressApp: express.Express
     keyv: Keyv
-    callbacks: Callbacks
     algodClient: algosdk.Algodv2
     quicksigURL: string
     account: algosdk.Account
     service: string
     description: string
     url: string
+    events: EventEmitter
 
     constructor (options: VerificationServerOptions) {
       this.expressApp = express()
@@ -42,18 +38,18 @@ export namespace AlgoTipBot {
       this.keyv = new Keyv(options.database)
       this.keyv.on('error', err => console.log('Connection Error', err))
 
-      this.callbacks = options.callbacks || {} as Callbacks
       this.algodClient = options.algodClient
       this.quicksigURL = options.quicksigURL
       this.account = options.account
       this.service = options.service
       this.description = options.description
       this.url = options.url
+      this.events = new EventEmitter()
 
       this.setRoutes()
     }
 
-    async register (id: string | number, userAddress: string) {
+    async register (id: string | number, userAddress: string, callbackFunction?: (url: string) => Promise<void>) {
       const suggestedParams = await this.algodClient.getTransactionParams().do()
 
       const payObj = {
@@ -95,8 +91,8 @@ export namespace AlgoTipBot {
       axios
         .post(`${this.quicksigURL}/generate`, data)
         .then(res => {
-          if (this.callbacks.register) {
-            this.callbacks.register(`${this.quicksigURL}/${res.data}`)
+          if (callbackFunction) {
+            callbackFunction(`${this.quicksigURL}/${res.data}`)
           }
         })
         .catch(error => {
@@ -129,9 +125,7 @@ export namespace AlgoTipBot {
         const user = data.metadata.auth.user
         const userAddress = data.metadata.userAddress
 
-        if (this.callbacks.verify) {
-          this.callbacks.verify(user, userAddress)
-        }
+        this.events.emit('verify', user, userAddress)
 
         res.json({ msg: `Verified ${userAddress} belongs to ${user}` })
       })
