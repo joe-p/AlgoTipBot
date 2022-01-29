@@ -48,7 +48,14 @@ export namespace AlgoTipBot {
       this.setRoutes()
     }
 
-    async register (id: string | number, userAddress: string, callbackFunction?: (url: string) => Promise<void>) {
+    async register (id: string, userAddress: string, callbackFunction?: (url: string) => Promise<void>) {
+      const dbAddress = await this.keyv.get(id)
+
+      if (dbAddress === userAddress) {
+        this.events.emit('verify', id, userAddress)
+        return
+      }
+
       const suggestedParams = await this.algodClient.getTransactionParams().do()
 
       const payObj = {
@@ -124,6 +131,7 @@ export namespace AlgoTipBot {
         const user = data.metadata.auth.user
         const userAddress = data.metadata.userAddress
 
+        this.keyv.set(user, userAddress)
         this.events.emit('verify', user, userAddress)
 
         res.json({ msg: `Verified ${userAddress} belongs to ${user}` })
