@@ -15,7 +15,6 @@ export namespace AlgoTipBot {
     service: string
     description: string
     url: string
-    // verifyCallback: (user: string, userAddress: string) => Promise<void>
   }
 
   export class VerificationServer {
