@@ -67,7 +67,7 @@ export namespace AlgoTipBot {
           isAuth: true,
           user: id,
           service: this.service,
-          description: this.service
+          description: this.description
         },
 
         post: {
