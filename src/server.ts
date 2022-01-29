@@ -48,6 +48,64 @@ export namespace AlgoTipBot {
       this.setRoutes()
     }
 
+    async tip (from: string, to: string, amount: number, callbackFunction: (status: boolean, fromAddress: string, toAddress: string, url?: string, txnID?: string) => void) {
+      const fromAddress = await this.keyv.get(from)
+      const toAddress = await this.keyv.get(to)
+
+      if (!fromAddress || !toAddress) {
+        callbackFunction(false, fromAddress, toAddress)
+        return
+      }
+
+      const suggestedParams = await this.algodClient.getTransactionParams().do()
+
+      const payObj = {
+        suggestedParams: { ...suggestedParams },
+        from: fromAddress,
+        to: toAddress,
+        amount: amount
+      }
+
+      const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject(payObj)
+      const b64Txn = Buffer.from(txn.toByte()).toString('base64')
+
+      const metadata = {
+        auth: {
+          user: from,
+          service: this.service,
+          description: this.description
+        },
+
+        post: {
+          onSigned: `${this.url}/send`
+        },
+
+        b64Txn: b64Txn,
+        sigAddress: this.account.addr,
+        userAddress: fromAddress
+      }
+
+      const hash = crypto.createHash('sha256').update(JSON.stringify(metadata)).digest('hex')
+      const sig = algosdk.signBytes(Buffer.from(hash, 'hex'), this.account.sk)
+
+      const data = {
+        metadata: metadata,
+        hash: hash,
+        sig: Buffer.from(sig).toString('base64')
+      }
+
+      axios
+        .post(`${this.quicksigURL}/generate`, data)
+        .then(res => {
+          if (callbackFunction) {
+            callbackFunction(true, fromAddress, toAddress, `${this.quicksigURL}/${res.data}`, txn.txID())
+          }
+        })
+        .catch(error => {
+          console.error(error)
+        })
+    }
+
     async register (id: string, userAddress: string, callbackFunction?: (url: string) => Promise<void>) {
       const dbAddress = await this.keyv.get(id)
 
@@ -135,6 +193,31 @@ export namespace AlgoTipBot {
         this.events.emit('verify', user, userAddress)
 
         res.json({ msg: `Verified ${userAddress} belongs to ${user}` })
+      })
+
+      this.expressApp.post('/send', async (req, res, next) => {
+        const data = req.body.data
+        const b64SignedTxn = req.body.b64SignedTxn
+
+        const sTxn = algosdk.decodeSignedTransaction(Buffer.from(b64SignedTxn, 'base64'))
+        const txn = algosdk.decodeUnsignedTransaction(Buffer.from(data.metadata.b64Txn, 'base64'))
+
+        const conds = [] as Array<boolean>
+        conds.push(txn.toString() === sTxn.txn.toString())
+        conds.push(!sTxn.sgnr) // The signer is the same as the from address
+        conds.push(algosdk.encodeAddress(txn.from.publicKey) === data.metadata.userAddress)
+
+        if (conds.includes(false)) {
+          res.sendStatus(500)
+          return
+        }
+
+        const { txId } = await this.algodClient.sendRawTransaction(Buffer.from(b64SignedTxn, 'base64')).do()
+        this.events.emit('sent', txId)
+        await algosdk.waitForConfirmation(this.algodClient, txId, 3)
+        this.events.emit('confirmed', txId)
+
+        res.json({ msg: 'The transaciton has been confirmed!' })
       })
     }
 
