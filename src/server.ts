@@ -62,6 +62,7 @@ export namespace AlgoTipBot {
       const payObj = {
         suggestedParams: { ...suggestedParams },
         from: fromAddress,
+        note: new Uint8Array(Buffer.from(`Tip from ${from} to ${to} on ${this.service}`)),
         to: toAddress,
         amount: amount
       }
@@ -77,6 +78,7 @@ export namespace AlgoTipBot {
         },
 
         post: {
+          base: this.url,
           onSigned: `${this.url}/send`
         },
 
@@ -135,6 +137,7 @@ export namespace AlgoTipBot {
         },
 
         post: {
+          base: this.url,
           onSigned: `${this.url}/verify`
         },
 
