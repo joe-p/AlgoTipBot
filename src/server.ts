@@ -6,8 +6,8 @@ import * as crypto from 'crypto'
 import cors from 'cors'
 import { EventEmitter } from 'events'
 
-export namespace AlgoTipBot {
-  export interface VerificationServerOptions {
+export namespace AlgoTipServer {
+  export interface ServerOptions {
     database: string
     algodClient: algosdk.Algodv2
     quicksigURL: string
@@ -17,7 +17,7 @@ export namespace AlgoTipBot {
     url: string
   }
 
-  export class VerificationServer {
+  export class Server {
     expressApp: express.Express
     keyv: Keyv
     algodClient: algosdk.Algodv2
@@ -28,7 +28,7 @@ export namespace AlgoTipBot {
     url: string
     events: EventEmitter
 
-    constructor (options: VerificationServerOptions) {
+    constructor (options: ServerOptions) {
       this.expressApp = express()
       this.expressApp.use(express.urlencoded({ extended: true }))
       this.expressApp.use(express.json())
@@ -230,4 +230,4 @@ export namespace AlgoTipBot {
   }
 }
 
-export default AlgoTipBot
+export default AlgoTipServer
