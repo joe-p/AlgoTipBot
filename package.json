@@ -1,12 +1,17 @@
 {
   "name": "@joe-p/algo-tip-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "server.js",
   "license": "Apache-2.0",
   "scripts": {
     "start": "tsc && node dist/server.js",
     "build": "tsc"
   },
+  "files": [
+    "dist/*.js",
+    "dist/*.d.ts",
+    "LICENSE"
+  ],
   "devDependencies": {
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
