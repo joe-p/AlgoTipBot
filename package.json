@@ -4,7 +4,8 @@
   "main": "server.js",
   "license": "Apache-2.0",
   "scripts": {
-    "start": "tsc && node dist/server.js"
+    "start": "tsc && node dist/server.js",
+    "build": "tsc"
   },
   "devDependencies": {
     "@types/cors": "^2.8.12",
