@@ -112,7 +112,7 @@ export namespace AlgoTipServer {
       const dbAddress = await this.keyv.get(id)
 
       if (dbAddress === userAddress) {
-        this.events.emit('verify', id, userAddress)
+        this.events.emit(`verify:${id}-${userAddress}`)
         return
       }
 
@@ -216,9 +216,9 @@ export namespace AlgoTipServer {
         }
 
         const { txId } = await this.algodClient.sendRawTransaction(Buffer.from(b64SignedTxn, 'base64')).do()
-        this.events.emit('sent', txId)
+        this.events.emit(`sent:${txId}`)
         await algosdk.waitForConfirmation(this.algodClient, txId, 3)
-        this.events.emit('confirmed', txId)
+        this.events.emit(`confirmed:${txId}`)
 
         res.json({ msg: 'The transaciton has been confirmed!' })
       })
