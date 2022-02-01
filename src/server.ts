@@ -215,10 +215,31 @@ export namespace AlgoTipServer {
           return
         }
 
-        const { txId } = await this.algodClient.sendRawTransaction(Buffer.from(b64SignedTxn, 'base64')).do()
-        this.events.emit(`sent:${txId}`)
-        await algosdk.waitForConfirmation(this.algodClient, txId, 3)
-        this.events.emit(`confirmed:${txId}`)
+        try {
+          const { txId } = await this.algodClient.sendRawTransaction(Buffer.from(b64SignedTxn, 'base64')).do()
+          this.events.emit(`sent:${txId}`)
+          await algosdk.waitForConfirmation(this.algodClient, txId, 3)
+          this.events.emit(`confirmed:${txId}`)
+        }
+
+        catch(error: any) {
+          const resText = error.response?.text
+          // TODO errorObj type
+          let errorObj = {type: 'unknown', error: error} as any
+
+          if(resText) {
+            const resMessage = JSON.parse(resText).message
+
+            if(resMessage.split(' ')[3] == 'overspend') {
+              errorObj.type = 'overspend'
+              errorObj.balance = parseInt(resMessage.split(' ')[9].match(/\d+/)[0])
+            }
+          }
+
+          this.events.emit(`error:${txn.txID()}`, errorObj)
+          res.json({ msg: `Failed to send transaction. Encountered a ${errorObj.type} error` })
+          return
+        }
 
         res.json({ msg: 'The transaciton has been confirmed!' })
       })
