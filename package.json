@@ -1,6 +1,6 @@
 {
   "name": "@joe-p/algo-tip-server",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
   "license": "Apache-2.0",
