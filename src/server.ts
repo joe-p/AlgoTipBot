@@ -230,10 +230,16 @@ export namespace AlgoTipServer {
           if(resText) {
             const resMessage = JSON.parse(resText).message
 
-            if(resMessage.split(' ')[3] == 'overspend') {
+            if (resMessage.match(/overspend/)) {
               errorObj.type = 'overspend'
               errorObj.balance = parseInt(resMessage.split(' ')[9].match(/\d+/)[0])
-            }
+
+            } else if (resMessage.match(/balance \d+ below min/)) {
+              errorObj.type = 'minBalance'
+              errorObj.ammountLeft = parseInt(resMessage.match(/(?<=balance )\d+/)[0])
+              errorObj.min = parseInt(resMessage.match(/(?<=min )\d+/)[0])
+              errorObj.account = resMessage.match(/(?<=account )\w+/)[0]
+            } 
           }
 
           this.events.emit(`error:${txn.txID()}`, errorObj)
