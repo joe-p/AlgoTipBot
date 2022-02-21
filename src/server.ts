@@ -254,9 +254,10 @@ export namespace AlgoTipServer {
               errorObj.account = resMessage.match(/(?<=account )\w+/)[0]
             } else if (resMessage.match(/asset \d+ missing/)) {
               errorObj.type = 'assetMissing'
+              errorObj.account = resMessage.match(/\w+$/)[0]
             } else if (resMessage.match(/underflow/)) {
               errorObj.type = 'underflow'
-              errorObj.balance = resMessage.match(/\d+$/)
+              errorObj.balance = resMessage.match(/\d+$/)[0]
             }
           }
 
