@@ -48,7 +48,7 @@ export namespace AlgoTipServer {
       this.setRoutes()
     }
 
-    async tip (from: string, to: string, amount: number, callbackFunction: (status: boolean, fromAddress: string, toAddress: string, url?: string, txnID?: string) => void) {
+    async tip (assetIndex: number, from: string, to: string, amount: number, callbackFunction: (status: boolean, fromAddress: string, toAddress: string, url?: string, txnID?: string) => void) {
       const fromAddress = await this.keyv.get(from)
       const toAddress = await this.keyv.get(to)
 
@@ -59,15 +59,31 @@ export namespace AlgoTipServer {
 
       const suggestedParams = await this.algodClient.getTransactionParams().do()
 
-      const payObj = {
-        suggestedParams: { ...suggestedParams },
-        from: fromAddress,
-        note: new Uint8Array(Buffer.from(`Tip from ${from} to ${to} on ${this.service}`)),
-        to: toAddress,
-        amount: amount
+      let txn = {} as algosdk.Transaction
+
+      if (assetIndex) {
+        const assetTransferObj = {
+          suggestedParams: { ...suggestedParams },
+          from: fromAddress,
+          note: new Uint8Array(Buffer.from(`Tip from ${from} to ${to} on ${this.service}`)),
+          to: toAddress,
+          assetIndex: assetIndex,
+          amount: amount
+        }
+
+        txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject(assetTransferObj)
+      } else {
+        const payObj = {
+          suggestedParams: { ...suggestedParams },
+          from: fromAddress,
+          note: new Uint8Array(Buffer.from(`Tip from ${from} to ${to} on ${this.service}`)),
+          to: toAddress,
+          amount: amount
+        }
+
+        txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject(payObj)
       }
 
-      const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject(payObj)
       const b64Txn = Buffer.from(txn.toByte()).toString('base64')
 
       const metadata = {
