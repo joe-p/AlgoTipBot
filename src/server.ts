@@ -220,26 +220,23 @@ export namespace AlgoTipServer {
           this.events.emit(`sent:${txId}`)
           await algosdk.waitForConfirmation(this.algodClient, txId, 3)
           this.events.emit(`confirmed:${txId}`)
-        }
-
-        catch(error: any) {
+        } catch (error: any) {
           const resText = error.response?.text
           // TODO errorObj type
-          let errorObj = {type: 'unknown', error: error} as any
+          const errorObj = { type: 'unknown', error: error } as any
 
-          if(resText) {
+          if (resText) {
             const resMessage = JSON.parse(resText).message
 
             if (resMessage.match(/overspend/)) {
               errorObj.type = 'overspend'
               errorObj.balance = parseInt(resMessage.split(' ')[9].match(/\d+/)[0])
-
             } else if (resMessage.match(/balance \d+ below min/)) {
               errorObj.type = 'minBalance'
               errorObj.ammountLeft = parseInt(resMessage.match(/(?<=balance )\d+/)[0])
               errorObj.min = parseInt(resMessage.match(/(?<=min )\d+/)[0])
               errorObj.account = resMessage.match(/(?<=account )\w+/)[0]
-            } 
+            }
           }
 
           this.events.emit(`error:${txn.txID()}`, errorObj)
