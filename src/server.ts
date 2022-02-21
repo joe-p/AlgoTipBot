@@ -252,6 +252,8 @@ export namespace AlgoTipServer {
               errorObj.ammountLeft = parseInt(resMessage.match(/(?<=balance )\d+/)[0])
               errorObj.min = parseInt(resMessage.match(/(?<=min )\d+/)[0])
               errorObj.account = resMessage.match(/(?<=account )\w+/)[0]
+            } else if (resMessage.match(/asset \d+ missing/)) {
+              errorObj.type = 'assetMissing'
             }
           }
 
