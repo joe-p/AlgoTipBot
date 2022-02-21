@@ -15,7 +15,7 @@
     "url": "https://github.com/joe-p/algo-tip-server.git"
   },
   "scripts": {
-    "start": "tsc && node dist/server.js",
+    "start": "tsc",
     "build": "tsc"
   },
   "files": [
