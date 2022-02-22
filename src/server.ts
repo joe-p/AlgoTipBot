@@ -48,6 +48,59 @@ export namespace AlgoTipServer {
       this.setRoutes()
     }
 
+    async optin (assetIndex: number, user: string, callbackFunction: (status: boolean, url?: string, txnID?: string) => void) {
+      const address = await this.keyv.get(user)
+
+      if (!address) {
+        callbackFunction(false)
+        return
+      }
+
+      const assetTransferObj = {
+        suggestedParams: await this.algodClient.getTransactionParams().do(),
+        from: address,
+        // note: new Uint8Array(Buffer.from(`Tip from ${from} to ${to} on ${this.service}`)),
+        to: address,
+        assetIndex: assetIndex,
+        amount: 0
+      }
+
+      const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject(assetTransferObj)
+
+      const b64Txn = Buffer.from(txn.toByte()).toString('base64')
+
+      const metadata = {
+        post: {
+          base: this.url,
+          onSigned: `${this.url}/send`
+        },
+
+        b64Txn: b64Txn,
+        sigAddress: this.account.addr,
+        userAddress: address
+      }
+
+      const hash = crypto.createHash('sha256').update(JSON.stringify(metadata)).digest('hex')
+      const sig = algosdk.signBytes(Buffer.from(hash, 'hex'), this.account.sk)
+
+      const data = {
+        metadata: metadata,
+        hash: hash,
+        sig: Buffer.from(sig).toString('base64')
+      }
+
+      axios
+        .post(`${this.quicksigURL}/generate`, data)
+        .then(res => {
+          if (callbackFunction) {
+            callbackFunction(true, `${this.quicksigURL}/${res.data}`, txn.txID())
+          }
+        })
+        .catch(error => {
+          console.error(error)
+        })
+    }
+
     async tip (assetIndex: number, from: string, to: string, amount: number, callbackFunction: (status: boolean, fromAddress: string, toAddress: string, url?: string, txnID?: string) => void) {
       const fromAddress = await this.keyv.get(from)
       const toAddress = await this.keyv.get(to)
